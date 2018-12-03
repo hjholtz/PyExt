@@ -28,7 +28,15 @@ namespace PyExt::Remote {
 
 	auto PyInterpreterState::makeAutoInterpreterState() -> unique_ptr<PyInterpreterState>
 	{
-		auto autoInterpreterState = ExtRemoteTyped("autoInterpreterState");
+
+		PCSTR interpStateExpr = "autoInterpreterState";
+		ExtRemoteTyped pyVersionRef("PyWin_DLLVersionString");
+		if (pyVersionRef.ArrayElement(0).GetChar() == '3'
+			&& pyVersionRef.ArrayElement(1).GetChar() == '.'
+			&& pyVersionRef.ArrayElement(2).GetChar() >= '7') {
+			interpStateExpr = "_PyRuntime.gilstate.autoInterpreterState";
+		}
+		ExtRemoteTyped autoInterpreterState(interpStateExpr);
 		return make_unique<PyInterpreterState>(autoInterpreterState.GetPtr());
 	}
 

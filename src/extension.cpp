@@ -94,6 +94,22 @@ namespace PyExt {
 		HRESULT hr = m_Symbols->GetSymbolTypeId("autoInterpreterState", &typeId, nullptr);
 		if (SUCCEEDED(hr))
 			return;
+		// In Python 3.7, autoInterpreterState is buried in some nested structures
+		ULONG64 module = 0;
+		hr = m_Symbols->GetSymbolTypeId("_PyRuntime", &typeId, &module);
+		if (SUCCEEDED(hr))
+		{
+			if (m_Symbols3 != nullptr)
+			{
+				hr = m_Symbols3->GetFieldTypeAndOffset(module, typeId, "gilstate", &typeId, nullptr);
+				if (SUCCEEDED(hr)) 
+				{
+					hr = m_Symbols3->GetFieldTypeAndOffset(module, typeId, "autoInterpreterState", &typeId, nullptr);
+					if (SUCCEEDED(hr))
+						return;
+				}
+			}
+		}
 
 		// See if triggering a reload and retrying helps matters.
 		m_Symbols->Reload("/f python*");
@@ -101,6 +117,31 @@ namespace PyExt {
 		hr = m_Symbols->GetSymbolTypeId("autoInterpreterState", &typeId, nullptr);
 		if (SUCCEEDED(hr))
 			return;
+		hr = m_Symbols->GetSymbolTypeId("_PyRuntime", &typeId, &module);
+		if (SUCCEEDED(hr)) 
+		{
+			if (m_Symbols3 != nullptr) 
+			{
+				hr = m_Symbols3->GetFieldTypeAndOffset(module, typeId, "gilstate", &typeId, nullptr);
+				if (SUCCEEDED(hr)) 
+				{
+					hr = m_Symbols3->GetFieldTypeAndOffset(module, typeId, "autoInterpreterState", &typeId, nullptr);
+					if (SUCCEEDED(hr))
+						return;
+				}
+			} else {
+				Warn("\n\n");
+				Warn("*************************************************************************\n");
+				Warn("***           WARNING: Python symbols could not be verified.          ***\n");
+				Warn("***        Your windbg version is too old to determine whether        ***\n");
+				Warn("***      Python##.dll contains the required autoInterpreterState.     ***\n");
+				Warn("***                                                                   ***\n");
+				Warn("***  Continuing anyway. Expect error messages if symbols are missing  ***\n");
+				Warn("***      or you are using an unsupported Python version (>3.7)        ***\n");
+				Warn("*************************************************************************\n");
+				return;
+			}
+		}
 
 		ignoreOut.Delete();
 		Err("\n\n");
